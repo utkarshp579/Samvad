@@ -1,0 +1,238 @@
+
+---
+
+### 🔧 **System Design & Architecture**
+
+1. **Q: Why did you choose WebRTC for video conferencing?**
+   **A:** WebRTC offers low-latency, peer-to-peer communication ideal for real-time audio/video without requiring plugins. It supports media streams, data channels, and works across modern browsers.
+
+2. **Q: What role does Socket.io play in your application?**
+   **A:** Socket.io handles signaling between peers (exchange of SDP, ICE candidates) and also supports real-time chat communication and events like user join/leave.
+
+3. **Q: Explain the flow from joining a room to establishing a WebRTC connection.**
+   **A:**
+
+   * User enters a room (via `join-call` socket event).
+   * Server tracks peers and broadcasts presence.
+   * Each peer initializes `RTCPeerConnection`, adds media stream.
+   * Offers/answers are exchanged via Socket.io.
+   * ICE candidates are exchanged and connections are established.
+
+4. **Q: How do you manage multiple users in a single room?**
+   **A:** A mapping of socket IDs to `RTCPeerConnection` objects (`connections` object) is maintained. On `user-joined`, connections are established with all peers except self.
+
+5. **Q: What is the use of STUN servers?**
+   **A:** STUN (Session Traversal Utilities for NAT) servers help clients discover their public IPs and port mappings behind NAT/firewalls. This is essential for establishing P2P connections.
+
+---
+
+### 📹 **Media Handling & Streams**
+
+6. **Q: How do you handle media permissions?**
+   **A:** We use `navigator.mediaDevices.getUserMedia()` for camera and mic, and `getDisplayMedia()` for screen sharing. We also track permission status to toggle icons/UI accordingly.
+
+7. **Q: How is screen sharing handled?**
+   **A:** Toggling screen sharing triggers `getDisplayMedia()`. The stream replaces the current local stream, and we renegotiate connections using new tracks.
+
+8. **Q: What happens when a media track ends (e.g., user stops screen sharing)?**
+   **A:** `onended` callback of media tracks resets the stream to a black screen + silent audio (fallback) and restarts normal video/audio stream if needed.
+
+9. **Q: Why do you generate black/silence fallback streams?**
+   **A:** It prevents peer disconnection or errors when media tracks end. WebRTC expects a continuous stream; silent/black tracks act as placeholders.
+
+10. **Q: How do you mute/unmute audio or video dynamically?**
+    **A:** By toggling the `enabled` property of media tracks or replacing the stream and renegotiating.
+
+---
+
+### 🧠 **State Management & UX**
+
+11. **Q: How do you track multiple remote video streams in the frontend?**
+    **A:** Each video stream is tracked using `videos` state with `socketId` and stream. `useRef` holds current list for rendering and updating without stale closures.
+
+12. **Q: What is the purpose of `videoRef.current`?**
+    **A:** It stores the real-time list of remote video components and is updated independently from React state for performance and synchronization.
+
+13. **Q: How is chat state managed?**
+    **A:** Chat messages are stored in a state array. On `chat-message` socket event, new messages are appended and unread message count is updated unless modal is open.
+
+14. **Q: How do you manage new unread messages in the chat icon?**
+    **A:** A separate state `newMessages` is incremented for every new message if the modal is closed and the message is not from the current user.
+
+---
+
+### 🧪 **Edge Cases & Failures**
+
+15. **Q: What happens when a user refreshes or leaves mid-call?**
+    **A:** `user-left` event is emitted via Socket.io and handled on peers to remove the video stream associated with that socket ID.
+
+16. **Q: How do you handle slow network or ICE failure?**
+    **A:** WebRTC retries ICE candidate gathering. If failure persists, we fallback to silent/black streams. UI responsiveness may be degraded on poor connections.
+
+17. **Q: What happens if `getUserMedia()` fails?**
+    **A:** The app catches the error, disables camera/mic toggles, and falls back to placeholders, avoiding crashes.
+
+---
+
+### 🔐 **Security & Auth**
+
+18. **Q: How do you ensure only authenticated users can join?**
+    **A:** (If implemented) Login system verifies identity via backend using tokens. Frontend checks login state before allowing room access.
+
+19. **Q: Do you encrypt media streams or signaling messages?**
+    **A:** WebRTC encrypts media by default using SRTP. Socket.io messages can be secured using HTTPS/WSS and optional JWT for auth.
+
+---
+
+### 🛠️ **Code Practices & Optimization**
+
+20. **Q: Why do you use `useEffect` on screen state?**
+    **A:** To auto-trigger screen sharing logic when screen state changes, ensuring modular toggle behavior.
+
+21. **Q: Why is `connectToSocketServer()` separated from `getPermissions()`?**
+    **A:** To ensure media access is established before initiating socket and peer connections, reducing connection errors.
+
+22. **Q: What is the role of `getUserMediaSuccess()`?**
+    **A:** It stops old tracks, attaches new stream to local video, and re-negotiates all peer connections with the updated stream.
+
+23. **Q: Why do you use `navigator.mediaDevices` and not legacy `getUserMedia()`?**
+    **A:** It's promise-based and compatible with modern browsers. It simplifies async permission handling.
+
+---
+
+### 🚀 **Deployment & Scalability**
+
+24. **Q: How would you scale this app to 100+ users in a call?**
+    **A:** WebRTC doesn’t scale well in mesh topology. For large calls, a media server like SFU (e.g., Janus, Jitsi, Mediasoup) should be introduced to relay streams.
+
+25. **Q: What are some improvements you’d make to productionize this app?**
+    **A:**
+
+* Add SFU for scalability.
+* Implement TURN servers for strict NATs.
+* Add JWT-based authentication.
+* Improve UI responsiveness and mobile support.
+* Store chat/meeting history in MongoDB.
+
+---
+
+
+
+
+
+
+
+
+---
+
+## 🎯 MOCK INTERVIEW PLAN FOR SAMVAD
+
+---
+
+### ✅ **Interview Goals**
+- Test your understanding of real-time systems (WebRTC, Socket.io).
+- Judge clarity of thought on system design, architecture.
+- Assess ability to debug, optimize, and scale.
+- Explore depth in frontend/backend collaboration.
+- Evaluate security, UX, and production-readiness.
+
+---
+
+### 🗂️ **Structure**
+| Round | Focus Area | Duration | Type |
+|-------|------------|----------|------|
+| 1 | **Project Walkthrough** | 10 mins | Conversational |
+| 2 | **Tech Deep Dive** | 20 mins | Technical Q&A |
+| 3 | **Code/Architecture Thinking** | 15 mins | Whiteboard-style / Verbal |
+| 4 | **Optimizations & Scaling** | 10 mins | Design-Level |
+| 5 | **Wrap-Up & Feedback** | 5 mins | Behavioral / Feedback |
+
+---
+
+### 🧠 ROUND 1 – Project Walkthrough
+> **Goal:** Evaluate clarity, communication, and ownership.
+
+#### Interviewer Asks:
+- What is Samvad, and what problems does it solve?
+- What inspired you to build it?
+- Key tech choices and why?
+- Major challenges and how you solved them.
+
+**Tip:** Stick to problem-solution-impact format. Use real terms like "mesh topology", "signaling", etc.
+
+---
+
+### ⚙️ ROUND 2 – Technical Deep Dive
+
+#### WebRTC
+- How do ICE candidates work?
+- What’s the difference between offer and answer?
+- Why do you need STUN/TURN servers?
+
+#### Socket.io
+- How does signaling happen?
+- What events did you use?
+- Could you use something else instead of Socket.io?
+
+#### Media Handling
+- How do you mute/unmute a user stream?
+- What happens when a track ends?
+- Why do you use fallback black/silent tracks?
+
+#### Frontend (React)
+- Why `useRef` for video streams?
+- How do you manage re-renders with streams?
+- How is the chat badge counter isolated from rerenders?
+
+#### Backend
+- What's your backend stack? Why Express?
+- How do you handle user authentication?
+
+---
+
+### 🏗️ ROUND 3 – Code / Architecture Reasoning
+
+#### Sample prompts:
+- Draw/describe your signaling flow for a 3-person call.
+- Explain what happens when a 4th person joins an ongoing call.
+- Simulate a screen share toggle. What changes on the peer connections?
+
+---
+
+### 🚀 ROUND 4 – Scaling, Optimizations, and Real-World
+
+#### System Design
+- How would you scale this app for 500 users?
+- When should you move from P2P to SFU?
+- What are the trade-offs between mesh and SFU?
+
+#### Deployment
+- What would break in a production environment?
+- How do you handle cross-browser issues?
+
+#### Security
+- How would you secure signaling?
+- Can someone spoof a socket ID and send fake streams?
+
+---
+
+### 🧑‍⚖️ ROUND 5 – Wrap-up
+
+- What did you learn from building Samvad?
+- What feature would you add next?
+- If you were to rebuild it, what would you change?
+- Are you interested in working on real-time systems?
+
+---
+
+### 📚 PREP MATERIAL
+
+| Area | Resource |
+|------|----------|
+| WebRTC | [WebRTC for Beginners (fireship.io)](https://fireship.io/lessons/webrtc-basics/) |
+| Socket.io | [Socket.io Docs](https://socket.io/docs/v4/) |
+| TURN/STUN | [Google STUN Explained](https://webrtc.org/getting-started/stun-turn-servers) |
+| SFU | [Mediasoup / Jitsi Docs] |
+| Production Tips | [webrtcHacks Blog](https://webrtchacks.com/) |
+
+---

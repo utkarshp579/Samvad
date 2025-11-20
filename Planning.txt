@@ -10,3 +10,10 @@ reading Docs ,
 setup project 
 
 Setup database
+
+
+
+
+
+to improve :- 
+    chat ui is not scollable , text is going outside the box. 
